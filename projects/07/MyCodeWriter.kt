@@ -4,18 +4,6 @@ import java.io.File
 
 class MyCodeWriter(private val file: File) {
 
-    private val arithmeticMap = mapOf(
-        "add" to "M=M+D",
-        "sub" to "M=M-D",
-        "neg" to "M=-M",
-        "and" to "M=M&D",
-        "or" to "M=M|D",
-        "not" to "M=!M",
-        "eq" to eq(),
-        "gt" to gt(),
-        "lt" to lt()
-    )
-
     /**
      * 新しいVMファイルの変換が開始したことを知らせる
      */
@@ -27,12 +15,40 @@ class MyCodeWriter(private val file: File) {
      * 与えられた算術コマンドをアセンブリコードに変換し、ファイルに書き込む
      */
     fun writeArithmetic(command: String) {
-        val operator = arithmeticMap[command] ?: throw IllegalArgumentException()
-        val assemblyCode =
-            if (command == "neg" || command == "not") genLine(decrementSP(), loadSP(), operator, incrementSP())
-            else genLine(pop(), decrementSP(), loadSP(), operator, incrementSP())
+        val commands = when (command) {
+            "add" -> "M=M+D"
+            "sub" -> "M=M-D"
+            "neg" -> "M=-M"
+            "and" -> "M=M&D"
+            "or" -> "M=M|D"
+            "not" -> "M=!M"
+            "eq" -> eq()
+            "gt" -> gt()
+            "lt" -> lt()
+            else -> throw IllegalArgumentException()
+        }
+
+        val assemblyCode = genLine(pop(), decrementSP(), loadSP(), commands, incrementSP())
 
         file.appendText(assemblyCode)
+//        val arithmeticMap = mapOf(
+//            "add" to "M=M+D",
+//            "sub" to "M=M-D",
+//            "neg" to "M=-M",
+//            "and" to "M=M&D",
+//            "or" to "M=M|D",
+//            "not" to "M=!M",
+//            "eq" to eq(),
+//            "gt" to gt(),
+//            "lt" to lt()
+//        )
+//
+//        val operator = arithmeticMap[command] ?: throw IllegalArgumentException()
+//        val assemblyCode =
+//            if (command == "neg" || command == "not") genLine(decrementSP(), loadSP(), operator, incrementSP())
+//            else genLine(pop(), decrementSP(), loadSP(), operator, incrementSP())
+
+//        file.appendText(assemblyCode)
     }
 
     /**

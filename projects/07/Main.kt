@@ -13,6 +13,13 @@ fun main(args: Array<String>) {
     val parser = Parser(inputFile)
     val codeWriter = MyCodeWriter(outputFile)
 
+//    var num = 0
+//    val hashMap = mapOf("eq" to num)
+//
+//    for (i in 0..10) {
+//        println(hashMap["eq"])
+//        num++
+//    }
     while (parser.hasMoreCommands()) {
         parser.advance()
 
