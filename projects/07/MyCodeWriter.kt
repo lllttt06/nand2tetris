@@ -11,9 +11,9 @@ class MyCodeWriter(private val file: File) {
         "and" to "M=M&D",
         "or" to "M=M|D",
         "not" to "M=!M",
-//        "eq" to eq(),
-//        "gt" to gt(),
-//        "lt" to lt()
+        "eq" to eq(),
+        "gt" to gt(),
+        "lt" to lt()
     )
 
     /**
@@ -29,8 +29,8 @@ class MyCodeWriter(private val file: File) {
     fun writeArithmetic(command: String) {
         val operator = arithmeticMap[command] ?: throw IllegalArgumentException()
         val assemblyCode =
-            if (command == "neg" || command == "not") genLine(pop(), decrementSP(), loadSP(), operator, incrementSP())
-            else genLine(decrementSP(), loadSP(), operator, incrementSP())
+            if (command == "neg" || command == "not") genLine(decrementSP(), loadSP(), operator, incrementSP())
+            else genLine(pop(), decrementSP(), loadSP(), operator, incrementSP())
 
         file.appendText(assemblyCode)
     }
@@ -75,6 +75,78 @@ class MyCodeWriter(private val file: File) {
 
     // stackにconstをpushする
     private fun pushConst(const: Int) = genLine("@$const", "D=A") + push()
+
+    private var eqNum = 0
+    private var gtNum = 0
+    private var ltNum = 0
+    private fun eq(): String {
+        val command = genLine(
+            "D=M-D",
+            "@EQ$eqNum",
+            "D;JEQ",
+            "@NEQ$eqNum",
+            "0;JMP",
+            "(EQ$eqNum)",
+            loadSP(),
+            "M=-1",
+            "@EQNEXT$eqNum",
+            "0;JMP",
+            "(NEQ$eqNum)",
+            loadSP(),
+            "M=0",
+            "@EQNEXT$eqNum",
+            "0;JMP",
+            "(EQNEXT$eqNum)"
+        )
+        eqNum++
+        return command
+    }
+
+    private fun gt(): String {
+        val command = genLine(
+            "D=M-D",
+            "@GT$gtNum",
+            "D;JGT",
+            "@NGT$gtNum",
+            "0;JMP",
+            "(GT$gtNum)",
+            loadSP(),
+            "M=-1",
+            "@GTNEXT$gtNum",
+            "0;JMP",
+            "(NGT$gtNum)",
+            loadSP(),
+            "M=0",
+            "@GTNEXT$gtNum",
+            "0;JMP",
+            "(GTNEXT$gtNum)"
+        )
+        gtNum++
+        return command
+    }
+
+    private fun lt(): String {
+        val command = genLine(
+            "D=M-D",
+            "@LT$ltNum",
+            "D;JLT",
+            "@NLT$ltNum",
+            "0;JMP",
+            "(LT$ltNum)",
+            loadSP(),
+            "M=-1",
+            "@LTNEXT$ltNum",
+            "0;JMP",
+            "(NLT$ltNum)",
+            loadSP(),
+            "M=0",
+            "@LTNEXT$ltNum",
+            "0;JMP",
+            "(LTNEXT$ltNum)"
+        )
+        ltNum++
+        return command
+    }
 
 
     // vararg(可変長引数) commandsをそれぞれ改行して出力する関数これにより、いちいちコマンドの最後に\nを入れずにすむ
