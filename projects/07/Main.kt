@@ -13,13 +13,6 @@ fun main(args: Array<String>) {
     val parser = Parser(inputFile)
     val codeWriter = MyCodeWriter(outputFile)
 
-//    var num = 0
-//    val hashMap = mapOf("eq" to num)
-//
-//    for (i in 0..10) {
-//        println(hashMap["eq"])
-//        num++
-//    }
     while (parser.hasMoreCommands()) {
         parser.advance()
 
@@ -29,10 +22,16 @@ fun main(args: Array<String>) {
                 codeWriter.writeArithmetic(command)
             }
 
-            CommandType.C_PUSH, CommandType.C_POP -> {
+            CommandType.C_PUSH -> {
                 val segment = parser.arg1()
                 val index = parser.arg2()
                 codeWriter.writePushPop("push", segment, index)
+            }
+
+            CommandType.C_POP -> {
+                val segment = parser.arg1()
+                val index = parser.arg2()
+                codeWriter.writePushPop("pop", segment, index)
             }
 
             CommandType.C_LABEL -> {

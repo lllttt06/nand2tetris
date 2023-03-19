@@ -3,19 +3,20 @@ package projects.`07`
 import java.io.File
 
 class MyCodeWriter(private val file: File) {
+    private var fileName = ""
 
     /**
      * 新しいVMファイルの変換が開始したことを知らせる
      */
     fun setFileName(fileName: String) {
-        TODO()
+        this.fileName = fileName
     }
 
     /**
      * 与えられた算術コマンドをアセンブリコードに変換し、ファイルに書き込む
      */
     fun writeArithmetic(command: String) {
-        val commands = when (command) {
+        val operator = when (command) {
             "add" -> "M=M+D"
             "sub" -> "M=M-D"
             "neg" -> "M=-M"
@@ -28,27 +29,11 @@ class MyCodeWriter(private val file: File) {
             else -> throw IllegalArgumentException()
         }
 
-        val assemblyCode = genLine(pop(), decrementSP(), loadSP(), commands, incrementSP())
+        val assemblyCode =
+            if (command == "neg" || command == "not") genLine(decrementSP(), loadSP(), operator, incrementSP())
+            else genLine(pop(), decrementSP(), loadSP(), operator, incrementSP())
 
         file.appendText(assemblyCode)
-//        val arithmeticMap = mapOf(
-//            "add" to "M=M+D",
-//            "sub" to "M=M-D",
-//            "neg" to "M=-M",
-//            "and" to "M=M&D",
-//            "or" to "M=M|D",
-//            "not" to "M=!M",
-//            "eq" to eq(),
-//            "gt" to gt(),
-//            "lt" to lt()
-//        )
-//
-//        val operator = arithmeticMap[command] ?: throw IllegalArgumentException()
-//        val assemblyCode =
-//            if (command == "neg" || command == "not") genLine(decrementSP(), loadSP(), operator, incrementSP())
-//            else genLine(pop(), decrementSP(), loadSP(), operator, incrementSP())
-
-//        file.appendText(assemblyCode)
     }
 
     /**
@@ -56,13 +41,19 @@ class MyCodeWriter(private val file: File) {
      */
     fun writePushPop(command: String, segment: String, index: Int) {
         val assemblyCode = if (command == "push") {
-            if (segment == "constant") {
-                pushConst(index)
-            } else {
-                TODO()
+            when (segment) {
+                "constant" -> pushConst(index)
+                "local", "argument", "this", "that" -> pushSegment(segment, index)
+                "pointer", "temp" -> pushPointerOrTemp(segment, index)
+                "static" -> genLine("@$fileName.$index", "D=M", push())
+                else -> throw IllegalArgumentException()
             }
         } else {
-            TODO()
+            when (segment) {
+                "argument", "local", "this", "that", "pointer", "temp" -> popToSegment(segment, index)
+                "static" -> genLine(pop(), "@$fileName.$index", "M=D")
+                else -> throw IllegalArgumentException()
+            }
         }
 
         file.appendText(assemblyCode)
@@ -91,6 +82,41 @@ class MyCodeWriter(private val file: File) {
 
     // stackにconstをpushする
     private fun pushConst(const: Int) = genLine("@$const", "D=A") + push()
+
+    // stackに各セグメントに格納されている値をpushする
+    private fun pushSegment(segment: String, idx: Int): String {
+        val seg = when (segment) {
+            "local" -> "@LCL"
+            "argument" -> "@ARG"
+            "this" -> "@THIS"
+            "that" -> "@THAT"
+            else -> throw IllegalArgumentException()
+        }
+        return genLine("@$idx", "D=A", seg, "A=M+D", "D=M", push())
+    }
+
+    private fun pushPointerOrTemp(segment: String, index: Int): String {
+        val commands = when (segment) {
+            "pointer" -> genLine("@${3 + index}", "D=M")
+            "temp" -> genLine("@${5 + index}", "D=M")
+            else -> throw IllegalArgumentException()
+        }
+        return genLine(commands + push())
+    }
+
+    // stackの値をpopして各セグメントに格納する
+    private fun popToSegment(segment: String, index: Int): String {
+        val commands = when (segment) {
+            "local" -> genLine("@LCL", "D=M+D")
+            "argument" -> genLine("@ARG", "D=M+D")
+            "this" -> genLine("@THIS", "D=M+D")
+            "that" -> genLine("@THAT", "D=M+D")
+            "pointer" -> genLine("@3", "D=A+D")
+            "temp" -> genLine("@5", "D=A+D")
+            else -> throw IllegalArgumentException()
+        }
+        return genLine("@$index", "D=A", commands, "@R13", "M=D", pop(), "@R13", "A=M", "M=D")
+    }
 
     private var eqNum = 0
     private var gtNum = 0
