@@ -3,20 +3,51 @@ package projects.`07`
 import java.io.File
 
 fun main(args: Array<String>) {
-    val inputFilePath = args[0]
-    val inputFile = File(inputFilePath)
+    val sourcePath = args[0].trimEnd('/')
+    val source = File(sourcePath)
 
-    val outputFilePath = inputFilePath.substringBeforeLast(".") + ".asm"
+    val outputFilePath = if (source.isFile) {
+        sourcePath.substringBeforeLast(".") + ".asm"
+    } else {
+        val dirName = sourcePath.substringAfterLast("/")
+        "$sourcePath/$dirName.asm"
+    }
     val outputFile = File(outputFilePath)
     if (outputFile.exists()) outputFile.delete()
 
-    val parser = Parser(inputFile)
     val codeWriter = MyCodeWriter(outputFile)
 
-    while (parser.hasMoreCommands()) {
+    if (source.isFile) {
+        val parser = Parser(source)
+        val inputFileName = sourcePath.substringAfterLast("/").substringBeforeLast(".")
+        codeWriter.setFileName(inputFileName)
+        translate(parser, codeWriter)
+    } else {
+
+        val sysFile = source.listFiles { file -> file.name == "Sys.vm" }?.firstOrNull()
+        if (sysFile != null) {
+            val parser = Parser(sysFile)
+            codeWriter.setFileName(sysFile.nameWithoutExtension)
+            codeWriter.writeInit()
+            translate(parser, codeWriter)
+        }
+
+        val vmFiles = source.listFiles { file -> file.name != "Sys.vm" && file.extension == "vm" }
+        if (!vmFiles.isNullOrEmpty()) {
+            vmFiles.forEach { vmFile ->
+                val parser = Parser(vmFile)
+                codeWriter.setFileName(vmFile.nameWithoutExtension)
+                translate(parser, codeWriter)
+            }
+        }
+    }
+}
+
+fun translate(parser: Parser, codeWriter: MyCodeWriter) {
+    loop@ while (parser.hasMoreCommands()) {
         parser.advance()
 
-        when (parser.commandType()) {
+        when (val commandType = parser.commandType()) {
             CommandType.C_ARITHMETIC -> {
                 val command = parser.arg1()
                 codeWriter.writeArithmetic(command)
@@ -35,27 +66,34 @@ fun main(args: Array<String>) {
             }
 
             CommandType.C_LABEL -> {
-                TODO()
+                val label = parser.arg1()
+                codeWriter.writeLabel(label)
             }
 
             CommandType.C_GOTO -> {
-                TODO()
+                val label = parser.arg1()
+                codeWriter.writeGoto(label)
             }
 
             CommandType.C_IF -> {
-                TODO()
+                val label = parser.arg1()
+                codeWriter.writeIf(label)
             }
 
             CommandType.C_FUNCTION -> {
-                TODO()
+                val functionName = parser.arg1()
+                val numLocals = parser.arg2()
+                codeWriter.writeFunction(functionName, numLocals)
             }
 
             CommandType.C_CALL -> {
-                TODO()
+                val functionName = parser.arg1()
+                val numArgs = parser.arg2()
+                codeWriter.writeCall(functionName, numArgs)
             }
 
             CommandType.C_RETURN -> {
-                TODO()
+                codeWriter.writeReturn()
             }
         }
     }

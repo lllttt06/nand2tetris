@@ -13,6 +13,53 @@ class MyCodeWriter(private val file: File) {
     }
 
     /**
+     * VMの初期化
+     */
+    fun writeInit() {
+
+    }
+
+    /**
+     * labelコマンドを行う
+     */
+    fun writeLabel(label: String) {
+        val assemblyCode = genLine("($fileName$label)")
+        file.appendText(assemblyCode)
+    }
+
+    /**
+     * gotoコマンドを行う
+     */
+    fun writeGoto(label: String) {
+        val assemblyCode = genLine("@$fileName$label", "0;JMP")
+        file.appendText(assemblyCode)
+    }
+
+    /**
+     * if-gotoコマンドを行う
+     */
+    fun writeIf(label: String) {
+        val assemblyCode = genLine(pop(), "@$fileName$label", "D;JNE")
+        file.appendText(assemblyCode)
+    }
+
+    /**
+     * callコマンドを行う
+     */
+    fun writeCall(functionName: String, numArgs: Int) {}
+
+    /**
+     * returnコマンド
+     */
+    fun writeReturn() {}
+
+    /**
+     * functionコマンドを行う
+     */
+    fun writeFunction(functionName: String, numLocals: Int) {}
+
+
+    /**
      * 与えられた算術コマンドをアセンブリコードに変換し、ファイルに書き込む
      */
     fun writeArithmetic(command: String) {
