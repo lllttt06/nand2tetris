@@ -51,12 +51,37 @@ class MyCodeWriter(private val file: File) {
     /**
      * returnコマンド
      */
-    fun writeReturn() {}
+    fun writeReturn() {
+        var assemblyCode = ""
+        // frame = LCL
+        assemblyCode += genLine("@LCL", "D=M", "@frame", "M=D")
+        // ret = frame - 5 (リターンアドレスを取得)
+        assemblyCode += genLine("@5", "D=A", "@frame", "A=M-D", "D=M", "@ret", "M=D")
+        // ARG[0] = pop() (関数の呼び出し側のために、戻り値をセットする)
+        assemblyCode += genLine(pop() + "@ARG", "A=M", "M=D")
+        // SP = ARG + 1
+        assemblyCode += genLine("@ARG", "D=M", "@SP", "M=D+1")
+        // THAT = frame - 1
+        assemblyCode += genLine("@frame", "A=M-1", "D=M", "@THAT", "M=D")
+        // THIS = frame - 2
+        assemblyCode += genLine("@2", "D=A", "@frame", "A=M-D", "D=M", "@THIS", "M=D")
+        // ARG = frame - 3
+        assemblyCode += genLine("@3", "D=A", "@frame", "A=M-D", "D=M", "@ARG", "M=D")
+        // LCL = frame - 4
+        assemblyCode += genLine("@4", "D=A", "@frame", "A=M-D", "D=M", "@LCL", "M=D")
+        // goto ret
+        assemblyCode += genLine("@ret", "A=M", "0;JMP")
+        file.appendText(assemblyCode)
+    }
 
     /**
      * functionコマンドを行う
      */
-    fun writeFunction(functionName: String, numLocals: Int) {}
+    fun writeFunction(functionName: String, numLocals: Int) {
+        var assemblyCode = genLine("($functionName)")
+        for (i in 0 until numLocals) assemblyCode += pushConst(0)
+        file.appendText(assemblyCode)
+    }
 
 
     /**

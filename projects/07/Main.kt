@@ -15,7 +15,13 @@ fun main(args: Array<String>) {
     val outputFile = File(outputFilePath)
     if (outputFile.exists()) outputFile.delete()
 
-    val codeWriter = MyCodeWriter(outputFile)
+    val codeWriter = CodeWriter(outputFile)
+//    val parser = Parser(source)
+//    val inputFileName = sourcePath.substringAfterLast("/").substringBeforeLast(".")
+//    codeWriter.setFileName(inputFileName)
+//    translate(parser, codeWriter)
+
+
 
     if (source.isFile) {
         val parser = Parser(source)
@@ -43,7 +49,7 @@ fun main(args: Array<String>) {
     }
 }
 
-fun translate(parser: Parser, codeWriter: MyCodeWriter) {
+fun translate(parser: Parser, codeWriter: CodeWriter) {
     loop@ while (parser.hasMoreCommands()) {
         parser.advance()
 

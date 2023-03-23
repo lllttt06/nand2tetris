@@ -153,6 +153,7 @@ class CodeWriter(private val file: File) {
 
         // 関数の戻り値を呼び出し元のスタックに格納(argument[0]は呼び出し元ではスタックの最上位になる)
         assemblyCode += genLine(pop() + "@ARG", "A=M", "M=D")
+//        assemblyCode += popToSegment("argument", 0)
 
         // SPを呼び出し元のSPに戻す
         assemblyCode += genLine("@ARG", "D=M", "@SP", "M=D+1")
