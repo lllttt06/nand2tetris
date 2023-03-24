@@ -51,8 +51,7 @@ D=M
 M=D
 @Sys.init
 0;JMP
-(return-address0)
-(Sys.init)
+(return-address0)(Sys.init)
 @6
 D=A
 @SP
@@ -116,8 +115,7 @@ D=M
 M=D
 @Class1.set
 0;JMP
-(return-address1)
-@0
+(return-address1)@0
 D=A
 @5
 D=A+D
@@ -195,8 +193,7 @@ D=M
 M=D
 @Class2.set
 0;JMP
-(return-address2)
-@0
+(return-address2)@0
 D=A
 @5
 D=A+D
@@ -260,8 +257,7 @@ D=M
 M=D
 @Class1.get
 0;JMP
-(return-address3)
-@return-address4
+(return-address3)@return-address4
 D=A
 @SP
 A=M
@@ -310,8 +306,7 @@ D=M
 M=D
 @Class2.get
 0;JMP
-(return-address4)
-(SysWHILE)
+(return-address4)(SysWHILE)
 @SysWHILE
 0;JMP
 (Class1.set)

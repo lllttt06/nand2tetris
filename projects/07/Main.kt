@@ -15,13 +15,7 @@ fun main(args: Array<String>) {
     val outputFile = File(outputFilePath)
     if (outputFile.exists()) outputFile.delete()
 
-    val codeWriter = CodeWriter(outputFile)
-//    val parser = Parser(source)
-//    val inputFileName = sourcePath.substringAfterLast("/").substringBeforeLast(".")
-//    codeWriter.setFileName(inputFileName)
-//    translate(parser, codeWriter)
-
-
+    val codeWriter = MyCodeWriter(outputFile)
 
     if (source.isFile) {
         val parser = Parser(source)
@@ -29,7 +23,6 @@ fun main(args: Array<String>) {
         codeWriter.setFileName(inputFileName)
         translate(parser, codeWriter)
     } else {
-
         val sysFile = source.listFiles { file -> file.name == "Sys.vm" }?.firstOrNull()
         if (sysFile != null) {
             val parser = Parser(sysFile)
@@ -49,7 +42,7 @@ fun main(args: Array<String>) {
     }
 }
 
-fun translate(parser: Parser, codeWriter: CodeWriter) {
+fun translate(parser: Parser, codeWriter: MyCodeWriter) {
     loop@ while (parser.hasMoreCommands()) {
         parser.advance()
 

@@ -4,6 +4,7 @@ import java.io.File
 
 class MyCodeWriter(private val file: File) {
     private var fileName = ""
+    private var returnAddressCounter = 0
 
     /**
      * 新しいVMファイルの変換が開始したことを知らせる
@@ -16,7 +17,9 @@ class MyCodeWriter(private val file: File) {
      * VMの初期化
      */
     fun writeInit() {
-
+        val assemblyCode = genLine("@256", "D=A", "@SP", "M=D")
+        file.appendText(assemblyCode)
+        writeCall("Sys.init", 0)
     }
 
     /**
@@ -46,7 +49,29 @@ class MyCodeWriter(private val file: File) {
     /**
      * callコマンドを行う
      */
-    fun writeCall(functionName: String, numArgs: Int) {}
+    fun writeCall(functionName: String, numArgs: Int) {
+        var assemblyCode = ""
+        // push return-address
+        assemblyCode += genLine("@return-address$returnAddressCounter", "D=A", push())
+        // push LCL
+        assemblyCode += genLine("@LCL", "D=M", push())
+        // push ARG
+        assemblyCode += genLine("@ARG", "D=M", push())
+        // push THIS
+        assemblyCode += genLine("@THIS", "D=M", push())
+        // push THAT
+        assemblyCode += genLine("@THAT", "D=M", push())
+        // ARG = SP - n - 5
+        assemblyCode += genLine("@SP", "D=M", "@$numArgs", "D=D-A", "@5", "D=D-A", "@ARG", "M=D")
+        // LCL = SP
+        assemblyCode += genLine("@SP", "D=M", "@LCL", "M=D")
+        // goto f
+        assemblyCode += genLine("@$functionName", "0;JMP")
+        // (return-address)
+        assemblyCode += genLine("(return-address$returnAddressCounter)")
+        file.appendText(assemblyCode)
+        returnAddressCounter++
+    }
 
     /**
      * returnコマンド
