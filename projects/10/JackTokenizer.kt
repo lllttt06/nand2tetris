@@ -115,7 +115,6 @@ class JackTokenizer(inputFile: File) {
 
             line = nextLine()
         }
-        println(nextTokenList)
     }
 
     /**
@@ -155,9 +154,9 @@ class JackTokenizer(inputFile: File) {
         return when {
             keywords.contains(currentToken) -> TokenType.KEYWORD
             symbols.contains(currentToken) -> TokenType.SYMBOL
-            isIdentifier(currentToken) -> TokenType.IDENTIFIER
             isInteger(currentToken) -> TokenType.INT_CONST
             currentToken.startsWith("\"") && currentToken.endsWith("\"") -> TokenType.STRING_CONST
+            isIdentifier(currentToken) -> TokenType.IDENTIFIER
             else -> throw NoSuchElementException()
         }
     }
