@@ -2,31 +2,32 @@ package projects.`10`
 
 import java.io.File
 
+fun main(vararg args: String) {
+    println(args.contentToString())
+    val source = File(args[0])
+    if (source.isDirectory) {
+        val jackFiles = source.listFiles { file -> file.extension == "jack" } ?: throw IllegalArgumentException()
+        jackFiles.forEach { inputFile -> compile(inputFile) }
+    } else {
+        compile(source)
+    }
+}
+
 //fun main(vararg args: String) {
 //    val source = File(args[0])
 //    if (source.isDirectory) {
 //        val jackFiles = source.listFiles { file -> file.extension == "jack" } ?: throw IllegalArgumentException()
-//        jackFiles.forEach { inputFile -> compile(inputFile) }
+//        jackFiles.forEach { inputFile ->
+//            val outputFile = File(inputFile.parent + "/" + inputFile.nameWithoutExtension + "T.xml")
+//            if (outputFile.exists()) outputFile.delete()
+//            tokenize(inputFile, outputFile)
+//        }
 //    } else {
-//        compile(source)
+//        val outputFile = File(source.parent + "/" + source.nameWithoutExtension + "T.xml")
+//        if (outputFile.exists()) outputFile.delete()
+//        tokenize(source, outputFile)
 //    }
 //}
-
-fun main(vararg args: String) {
-    val source = File(args[0])
-    if (source.isDirectory) {
-        val jackFiles = source.listFiles { file -> file.extension == "jack" } ?: throw IllegalArgumentException()
-        jackFiles.forEach { inputFile ->
-            val outputFile = File(inputFile.parent + "/" + inputFile.nameWithoutExtension + "T.xml")
-            if (outputFile.exists()) outputFile.delete()
-            tokenize(inputFile, outputFile)
-        }
-    } else {
-        val outputFile = File(source.parent + "/" + source.nameWithoutExtension + "T.xml")
-        if (outputFile.exists()) outputFile.delete()
-        tokenize(source, outputFile)
-    }
-}
 fun compile(inputFile: File) {
     val tempFile = File(inputFile.parent + "/" + inputFile.nameWithoutExtension + "T.xml")
     if (tempFile.exists()) tempFile.delete()

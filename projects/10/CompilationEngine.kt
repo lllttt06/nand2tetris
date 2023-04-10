@@ -1,10 +1,14 @@
 package projects.`10`
 
+import projects.`10`.SymbolTable.Kind
+import projects.`10`.SymbolTable.SymbolTable
 import java.io.File
 
 class CompilationEngine(inputFile: File, private val outputFile: File) {
 
     private val tokenizer = JackTokenizer(inputFile)
+
+    private val symbolTable = SymbolTable()
 
     private val opeSet: Set<String> = setOf("+", "-", "*", "/", "&", "|", "<", ">", "=")
 
@@ -12,6 +16,7 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
 
     fun compileClass() {
         outputFile.writeWithLF(genStartTag(TagName.CLASS.value))
+
         loop@ while (tokenizer.hasMoreTokens()) {
             tokenizer.advance()
             when (tokenizer.tokenType()) {
@@ -37,38 +42,56 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                 }
 
                 TokenType.IDENTIFIER -> {
-                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier() + ", class"))
                 }
 
                 else -> throw IllegalArgumentException()
             }
         }
-
+        println(symbolTable.classHashMap)
+        println(symbolTable.subroutineMap)
         outputFile.writeWithLF(genEndTag(TagName.CLASS.value))
     }
 
     private fun compileClassVarDec() {
+        val keyword = tokenizer.keyword()
         outputFile.writeWithLF(genStartTag(TagName.CLASS_VAR_DEC.value))
-        outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, tokenizer.keyword()))
+        outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, keyword))
+
+        val type: String
+        tokenizer.advance()
+        when (tokenizer.tokenType()) {
+            TokenType.KEYWORD -> {
+                type = tokenizer.keyword()
+                outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, tokenizer.keyword()))
+            }
+
+            TokenType.IDENTIFIER -> {
+                type = tokenizer.keyword()
+                outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier() + ", class"))
+            }
+
+            else -> throw IllegalArgumentException()
+        }
+
+        tokenizer.advance()
+
+        symbolTable.define(tokenizer.identifier(), type, Kind.find(keyword))
+        outputFile.writeWithLF(
+            wrapWithTag(
+                TagName.IDENTIFIER,
+                tokenizer.identifier() + ", $keyword, defined, $keyword, ${symbolTable.indexOf(tokenizer.identifier())}"
+            )
+        )
+
         loop@ while (tokenizer.tokenType() != TokenType.SYMBOL || tokenizer.symbol() != ';') {
             tokenizer.advance()
             when (tokenizer.tokenType()) {
-                TokenType.KEYWORD -> {
-                    when (val keyword = tokenizer.keyword()) {
-                        "int", "char", "boolean" -> {
-                            outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, keyword))
-                        }
-
-                        else -> throw IllegalArgumentException()
-                    }
-                }
-
                 TokenType.SYMBOL -> {
                     when (val symbol = tokenizer.symbol()) {
                         ',' -> outputFile.writeWithLF(wrapWithTag(TagName.SYMBOL, symbol.toString()))
                         ';' -> {
                             outputFile.writeWithLF(wrapWithTag(TagName.SYMBOL, symbol.toString()))
-                            break@loop
                         }
 
                         else -> throw IllegalArgumentException()
@@ -76,7 +99,13 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                 }
 
                 TokenType.IDENTIFIER -> {
-                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                    symbolTable.define(tokenizer.identifier(), type, Kind.find(keyword))
+                    outputFile.writeWithLF(
+                        wrapWithTag(
+                            TagName.IDENTIFIER,
+                            tokenizer.identifier() + ", $keyword, defined, $keyword, ${symbolTable.indexOf(tokenizer.identifier())}"
+                        )
+                    )
                 }
 
                 else -> throw IllegalArgumentException()
@@ -132,7 +161,8 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                 }
 
                 TokenType.IDENTIFIER -> {
-                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                    val category = if (tokenizer.nextToken() == "(") "subroutine" else "class"
+                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier() + ", $category"))
                 }
 
                 else -> throw IllegalArgumentException()
@@ -143,18 +173,30 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
     }
 
     private fun compileParameterList() {
+        symbolTable.startSubroutine()
+
         outputFile.writeWithLF(genStartTag(TagName.PARAMETER_LIST.value))
         if (tokenizer.tokenType() == TokenType.SYMBOL && tokenizer.symbol() == ')') {
             outputFile.writeWithLF(genEndTag(TagName.PARAMETER_LIST.value))
             return
         }
-        outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, tokenizer.keyword()))
+
+        var type = ""
+        if (tokenizer.tokenType() == TokenType.IDENTIFIER) {
+            type = tokenizer.identifier()
+            outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+        }
+        if (tokenizer.tokenType() == TokenType.KEYWORD) {
+            type = tokenizer.keyword()
+            outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, tokenizer.keyword()))
+        }
         loop@ while (tokenizer.hasMoreTokens()) {
             tokenizer.advance()
             when (tokenizer.tokenType()) {
                 TokenType.KEYWORD -> {
                     when (val keyword = tokenizer.keyword()) {
                         "int", "char", "boolean" -> {
+                            type = keyword
                             outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, keyword))
                         }
 
@@ -171,7 +213,22 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                 }
 
                 TokenType.IDENTIFIER -> {
-                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                    if (tokenizer.nextToken() == "," || tokenizer.nextToken() == ")") {
+                        symbolTable.define(tokenizer.identifier(), type, Kind.ARG)
+                        outputFile.writeWithLF(
+                            wrapWithTag(
+                                TagName.IDENTIFIER,
+                                tokenizer.identifier() + ", argument, used, ${symbolTable.kindOf(tokenizer.identifier())}, ${
+                                    symbolTable.indexOf(
+                                        tokenizer.identifier()
+                                    )
+                                }"
+                            )
+                        )
+                    } else {
+                        type = tokenizer.identifier()
+                        outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, "$type, class"))
+                    }
                 }
 
                 else -> throw IllegalArgumentException()
@@ -184,11 +241,13 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
         outputFile.writeWithLF(genStartTag(TagName.VAR_DEC.value))
         outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, tokenizer.keyword()))
         loop@ while (tokenizer.hasMoreTokens()) {
+            var type = ""
             tokenizer.advance()
             when (tokenizer.tokenType()) {
                 TokenType.KEYWORD -> {
                     when (val keyword = tokenizer.keyword()) {
                         "int", "char", "boolean" -> {
+                            type = tokenizer.keyword()
                             outputFile.writeWithLF(wrapWithTag(TagName.KEYWORD, keyword))
                         }
                     }
@@ -208,7 +267,19 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                 }
 
                 TokenType.IDENTIFIER -> {
-                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                    if (tokenizer.nextToken() == ";" || tokenizer.nextToken() == ",") {
+                        symbolTable.define(tokenizer.identifier(), type, Kind.VAR)
+                        val index = symbolTable.indexOf(tokenizer.identifier())
+                        outputFile.writeWithLF(
+                            wrapWithTag(
+                                TagName.IDENTIFIER,
+                                tokenizer.identifier() + ", var, defined, var, $index"
+                            )
+                        )
+                    } else {
+                        type = tokenizer.identifier()
+                        outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                    }
                 }
 
                 else -> throw IllegalArgumentException()
@@ -272,7 +343,16 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                 }
 
                 TokenType.IDENTIFIER -> {
-                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                    outputFile.writeWithLF(
+                        wrapWithTag(
+                            TagName.IDENTIFIER,
+                            tokenizer.identifier() + ", ${symbolTable.kindOf(tokenizer.identifier())}, used, ${
+                                symbolTable.kindOf(
+                                    tokenizer.identifier()
+                                )
+                            }, ${symbolTable.indexOf(tokenizer.identifier())}"
+                        )
+                    )
                 }
 
                 else -> throw IllegalArgumentException()
@@ -342,7 +422,21 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                 }
 
                 TokenType.IDENTIFIER -> {
-                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                    if (symbolTable.kindOf(tokenizer.identifier()) == Kind.NONE) {
+                        val category = if (tokenizer.nextToken() == "(") "subroutine" else "class"
+                        outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier() + ", $category"))
+                    } else {
+                        outputFile.writeWithLF(
+                            wrapWithTag(
+                                TagName.IDENTIFIER,
+                                tokenizer.identifier() + ", var, used, ${symbolTable.kindOf(tokenizer.identifier())}, ${
+                                    symbolTable.indexOf(
+                                        tokenizer.identifier()
+                                    )
+                                }"
+                            )
+                        )
+                    }
                     tokenizer.advance()
                     when (tokenizer.tokenType()) {
                         TokenType.SYMBOL -> {
@@ -357,7 +451,12 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                                 '.' -> {
                                     outputFile.writeWithLF(wrapWithTag(TagName.SYMBOL, symbol.toString()))
                                     tokenizer.advance()
-                                    outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                                    outputFile.writeWithLF(
+                                        wrapWithTag(
+                                            TagName.IDENTIFIER,
+                                            tokenizer.identifier() + ", subroutine"
+                                        )
+                                    )
                                     tokenizer.advance()
                                     outputFile.writeWithLF(wrapWithTag(TagName.SYMBOL, tokenizer.symbol().toString()))
                                     compileExpressionList()
@@ -497,9 +596,18 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
             }
 
             TokenType.IDENTIFIER -> {
-                outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
                 when (tokenizer.nextToken()) {
                     "[" -> {
+                        outputFile.writeWithLF(
+                            wrapWithTag(
+                                TagName.IDENTIFIER,
+                                tokenizer.identifier() + ", ${symbolTable.kindOf(tokenizer.identifier())}, used, ${
+                                    symbolTable.kindOf(
+                                        tokenizer.identifier()
+                                    )
+                                }, ${symbolTable.indexOf(tokenizer.identifier())}"
+                            )
+                        )
                         tokenizer.advance()
                         outputFile.writeWithLF(wrapWithTag(TagName.SYMBOL, tokenizer.symbol().toString()))
                         tokenizer.advance()
@@ -509,6 +617,7 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                     }
 
                     "(" -> {
+                        outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier() + ", subroutine"))
                         tokenizer.advance()
                         outputFile.writeWithLF(wrapWithTag(TagName.SYMBOL, tokenizer.symbol().toString()))
                         compileExpressionList()
@@ -517,10 +626,24 @@ class CompilationEngine(inputFile: File, private val outputFile: File) {
                     }
 
                     "." -> {
+                        if (symbolTable.kindOf(tokenizer.identifier()) == Kind.NONE) {
+                            outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier() + ", class"))
+                        } else {
+                            outputFile.writeWithLF(
+                                wrapWithTag(
+                                    TagName.IDENTIFIER,
+                                    tokenizer.identifier() + ", ${symbolTable.kindOf(tokenizer.identifier())}, used, ${
+                                        symbolTable.kindOf(
+                                            tokenizer.identifier()
+                                        )
+                                    }, ${symbolTable.indexOf(tokenizer.identifier())}"
+                                )
+                            )
+                        }
                         tokenizer.advance()
                         outputFile.writeWithLF(wrapWithTag(TagName.SYMBOL, tokenizer.symbol().toString()))
                         tokenizer.advance()
-                        outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier()))
+                        outputFile.writeWithLF(wrapWithTag(TagName.IDENTIFIER, tokenizer.identifier() + ", subroutine"))
                         tokenizer.advance()
                         outputFile.writeWithLF(wrapWithTag(TagName.SYMBOL, tokenizer.symbol().toString()))
                         compileExpressionList()
